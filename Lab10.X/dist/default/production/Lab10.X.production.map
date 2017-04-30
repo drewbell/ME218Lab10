@@ -1,0 +1,44 @@
+MPLINK 5.08, LINKER
+Linker Map File - Created Sat Apr 29 10:30:02 2017
+
+                                 Section Info
+                  Section       Type    Address   Location Size(Bytes)
+                ---------  ---------  ---------  ---------  ---------
+                   .org_0       code   0x000000    program   0x000002
+                   .cinit    romdata   0x000001    program   0x000004
+                   .org_1       code   0x000005    program   0x00002e
+.config_2007_BUILD/DEFAULT/PRODUCTION/LAB10MA       code   0x002007    program   0x000002
+
+
+
+                              Program Memory Usage 
+                               Start         End      
+                           ---------   ---------      
+                            0x000000    0x000002      
+                            0x000005    0x00001b      
+                            0x002007    0x002007      
+            27 out of 1030 program addresses used, program memory utilization is 2%
+
+
+
+                              Symbols - Sorted by Name
+                     Name    Address   Location    Storage File                     
+                ---------  ---------  ---------  --------- ---------                
+                     HUAD   0x000009    program     static U:\afbell\My Documents\Lab10\Software\Lab10.X\Lab10Main.asm
+                 InitGPIO   0x00000a    program     static U:\afbell\My Documents\Lab10\Software\Lab10.X\Lab10Main.asm
+                     Main   0x000005    program     static U:\afbell\My Documents\Lab10\Software\Lab10.X\Lab10Main.asm
+                      Run   0x000006    program     static U:\afbell\My Documents\Lab10\Software\Lab10.X\Lab10Main.asm
+             _.org_1_0009   0x000009    program     static U:\afbell\My Documents\Lab10\Software\Lab10.X\Lab10Main.asm
+
+
+
+                              Symbols - Sorted by Address
+                     Name    Address   Location    Storage File                     
+                ---------  ---------  ---------  --------- ---------                
+                     Main   0x000005    program     static U:\afbell\My Documents\Lab10\Software\Lab10.X\Lab10Main.asm
+                      Run   0x000006    program     static U:\afbell\My Documents\Lab10\Software\Lab10.X\Lab10Main.asm
+                     HUAD   0x000009    program     static U:\afbell\My Documents\Lab10\Software\Lab10.X\Lab10Main.asm
+             _.org_1_0009   0x000009    program     static U:\afbell\My Documents\Lab10\Software\Lab10.X\Lab10Main.asm
+                 InitGPIO   0x00000a    program     static U:\afbell\My Documents\Lab10\Software\Lab10.X\Lab10Main.asm
+
+
