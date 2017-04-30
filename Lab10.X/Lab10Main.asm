@@ -50,7 +50,7 @@
     
 #define HALF_BIT_TIME	    79
 #define ONE_BIT_TIME	    158
-    158
+    
 ;
 ;		Variable definitions
 ;
@@ -63,60 +63,60 @@ RecvDataRegister    equ     0x75       ; var for setting mode of spinning
 RecvStatus	    equ     0x76       ; byte containing RecvStarting (0), RecvDataReady (1), 
 					; RecvFramingErr (2), and RecvActive (3)
 
-        org         0           ;set location 0 in program memory as instruction to go to Main
-        goto        Main
-        org         4           ;set location 4 in program memory as instruction to go to ISR
-        goto        ISR
-        org         5           ;set location 5 in program memory as start of rest of code    
+		org         0           ;set location 0 in program memory as instruction to go to Main
+		goto        Main
+		org         4           ;set location 4 in program memory as instruction to go to ISR
+		goto        ISR
+		org         5           ;set location 5 in program memory as start of rest of code    
       
         
-Main:       ;Initializations
+Main:		;Initializations
             
-	    call        InitGPIO		    ; initialize GPIO pins   
-	    call	InitRxIOC		    ; initialize RA5 for interrupt on falling edge
-	    call	InitRxLEDTimer		    ; intialize Timer1 for 0.5s LED pulse upon RX
-	    clrf	RecvStatus		    ; clears RecvStarting, RecvDataReady, RecvFramingErr, RecvActive
-	    clrf	RecvShiftCounter	    ; clear RecvShiftCounter
-	    banksel     INTCON			    ; switch to bank 0 for INTCON 
-	    bsf		INTCON, GIE		    ; enable interrupts globally
+		call	    InitGPIO		    ; initialize GPIO pins   
+		call	    InitRxIOC		    ; initialize RA5 for interrupt on falling edge
+		call	    InitRxLEDTimer	    ; intialize Timer1 for 0.5s LED pulse upon RX
+		clrf	    RecvStatus		    ; clears RecvStarting, RecvDataReady, RecvFramingErr, RecvActive
+		clrf	    RecvShiftCounter	    ; clear RecvShiftCounter
+		banksel     INTCON		    ; switch to bank 0 for INTCON 
+		bsf	    INTCON, GIE		    ; enable interrupts globally
             
-Run:	    Nop                                       
-	    Nop
-	    goto	Run
+Run:		Nop                                       
+		Nop
+		goto	    Run
 
-HUAD:       goto        $                  ; hang here at the end  
+HUAD:		goto        $               ; hang here at the end  
     
 ;******************** Interrupt Service Routine *******************;
                             
 ISR: ;start of ISR
-Push        movwf      WREG_TEMP       ; save away W Register right off the bat
-            movf       STATUS,w        ; move status into W to prepare for saving
-            clrf       STATUS          ; clear status bits to change to file register bank 0
-            movwf      STATUS_TEMP     ; save away Status and
-            movf       PCLATH,w        ; store PCLATH in WREG
-            movwf      PCLATH_TEMP     ; save PCLATH value
-            clrf       PCLATH          ; ISR should configure bank as required
+Push		movwf	    WREG_TEMP       ; save away W Register right off the bat
+		movf	    STATUS,w        ; move status into W to prepare for saving
+		clrf	    STATUS          ; clear status bits to change to file register bank 0
+		movwf	    STATUS_TEMP     ; save away Status and
+		movf	    PCLATH,w        ; store PCLATH in WREG
+		movwf	    PCLATH_TEMP     ; save PCLATH value
+		clrf	    PCLATH          ; ISR should configure bank as required
 
 ISR_BODY:
 	    ;If IOCIF set (service interrupts for interrupts on change)
-	    banksel	IOCAF		    ;change to bank containing IOC flags for falling edges
-	    btfss	IOCAF, IOCAF5	    ;If RX interrupt is active, skip down to deal with IOCAF5 routine
-	    goto	ISR_TIMER2	    ;otherwise, skip down to next interrupt
+		banksel	    IOCAF		    ;change to bank containing IOC flags for falling edges
+		btfss	    IOCAF, IOCAF5	    ;If RX interrupt is active, skip down to deal with IOCAF5 routine
+		goto	    ISR_TIMER2	    ;otherwise, skip down to next interrupt
 	    
 RX_FALLING_EDGE
-	    banksel	PR2		    ;change to bank with PR2
-	    movlw	HALF_BIT_TIME	    ;Program Timer2 to fire interrupt ½ bit time 
-	    banksel	T2CON		    ; move to bank containing T2CON
-	    bsf		T2CON, TMR2ON	    ; turn ON the timer2
-	    bsf		BitStatus, Recv	    ;Set RecvStarting to 1 
-	    movlw	07h		    ;Prepare WREG to set RecvShiftCounter to 7	
-	    movwf	RecvShiftCounter    ;write WREG to RecvShiftCounter
-	    banksel	IOCAF		    ;change to bank with IOC falling edge flags
-	    bcf		IOCAF, IOCAF5	    ;Clear IOCAF bit associated with RX
-	    bcf		IOCAN, RA5	    ;Disable falling IOC on RX
-	    ;Endif IOC on RX
-	    ;Process other IOC interrupts as needed
-	    ;Endif (IOCF set)
+		banksel	    PR2		    ;change to bank with PR2
+		movlw	    HALF_BIT_TIME	    ;Program Timer2 to fire interrupt ½ bit time 
+		banksel	    T2CON		    ; move to bank containing T2CON
+		bsf	    T2CON, TMR2ON	    ; turn ON the timer2
+		bsf	    RecvStatus, RecvStarting	    ;Set RecvStarting to 1 
+		movlw	    07h		    ;Prepare WREG to set RecvShiftCounter to 7	
+		movwf	    RecvShiftCounter    ;write WREG to RecvShiftCounter
+		banksel	    IOCAF		    ;change to bank with IOC falling edge flags
+		bcf	    IOCAF, IOCAF5	    ;Clear IOCAF bit associated with RX
+		bcf	    IOCAN, RA5	    ;Disable falling IOC on RX
+		;Endif IOC on RX
+		;Process other IOC interrupts as needed
+		;Endif (IOCF set)
 
 ISR_TIMER2	;if TMR2 interrupt flag is active, response to subcases
 		banksel	    PIR1
@@ -127,7 +127,7 @@ Timer2_Reponse	btfss	    RecvStatus, RecvStarting    ;if RecvStarting set (doing
 		goto	    DataBit
 		
 StartBit	bcf	    RecvStatus, RecvStarting    ;clear RecvStarting
-		btfsc	    PortA,RA5		    ; if PortA pin RA5 (RX) is low, we got good start bit
+		btfsc	    PORTA,RA5		    ; if PortA pin RA5 (RX) is low, we got good start bit
 		goto	    BadStartBit		    ; otherwise goto BadStartBit
 		
 GoodStartBit	movlw	    ONE_BIT_TIME	    ; load up number representing one bit time into WREG
@@ -151,69 +151,78 @@ DataBit		;else (Doing data bit)
 		goto	    NewDataBit		    ; process new data bit
 		goto	    StopBit		    ; process stop bit
 		
-NewDataBit	bcf	    Status, C		    ; clear carry bit to prepare for right shift
+NewDataBit	bcf	    STATUS, C		    ; clear carry bit to prepare for right shift
 		rrf	    RecvShiftRegister,f	    ; shift RecvShiftRegister 1 position right
-		movf	    PortA,w		    ; move value on PortA to WREG
+		movf	    PORTA,w		    ; move value on PortA to WREG
 		btfsc	    W , RA5		    ; if RA5 is low, skip next insruction
 		bsf	    RecvShiftRegister,RA5   ; write that value on line was HIGH
 		btfss	    W , RA5		    ; if RA5 is high, skip next instruction
 		bcf	    RecvShiftRegister,RA5   ; write that value on line was LOW
 		goto	    ClearTMR2Flag	    ; skip down to clear Timer2 flag
-StopBit	    ;else
+		
+StopBit		;else
 		; shift RecvShiftRegister bits right 2 times to right-justify data, clearing Carry bit each time
-		bcf	    Status, C		    ; clear carry bit to prepare for right shift
+		bcf	    STATUS, C		    ; clear carry bit to prepare for right shift
 		rrf	    RecvShiftRegister,f	    ; shift RecvShiftRegister 1 position right
-		bcf	    Status, C		    ; clear carry bit to prepare for right shift
+		bcf	    STATUS, C		    ; clear carry bit to prepare for right shift
 		rrf	    RecvShiftRegister,f	    ; shift RecvShiftRegister 1 position right	    
 		movf	    RecvShiftRegister,w	    ; load RecvShiftRegister into WREG
 		movwf	    RecvDataRegister	    ; copy WREG (RecvShiftRegister) to RecvDataRegister
-		btfss	    Porta, RA5		    ; if RA5 is high for stop bit as it should be, skip next instruction
+		btfss	    PORTA, RA5		    ; if RA5 is high for stop bit as it should be, skip next instruction
 		bsf	    RecvStatus, RecvFramingErr	    ; RX LOW means bad stop bit, set RecvFramingErr
 		bsf	    RecvStatus, RecvDataReady	    ;set RecvDataReady to 1
-		call	    UpdateLEDs		    ; call routine to update LEDs
+		call	    UpdateDataLEDs	    ; call routine to update LEDs
 		banksel	    T2CON		    ; move to bank containing T2CON
 		bcf	    T2CON, TMR2ON	    ; disable TMR2 interrupt
 		banksel	    IOCAN		    ; change to bank with IOC falling edge enable register
 		bsf	    IOCAN, RA5		    ; Enable falling IOC on RX;program IOC Negative on RX and enable interrupt
 
-ClearTMR2Flag	banksel	    PIR1		    ; go to bank with PIR1 (Peripheral Interrut Request Register 1)
-		bcf	    IR1, TMR2IF		    ; clear Timer2Interrupt
+ClearTMR2Flag
+		banksel	    PIR1		    ; go to bank with PIR1 (Peripheral Interrut Request Register 1)
+		bcf	    PIR1, TMR2IF		    ; clear Timer2Interrupt
 	       
 		; End of TMR2 interrupt response
-
 
 ISR_TIMER1
 		banksel	    PIR1		    ; go to register containing the peripheral interrupt flags
 		btfss	    PIR1, TMR1IF	    ; If Timer1 interrupt is active, skip next instruction
-		goto	    POP			    ; skip down to POP since Timer1 interrupt is not active
+		goto	    Pop			    ; skip down to POP since Timer1 interrupt is not active
 		bcf	    LATA, BLUE_LED	    ; Lower RA4 to turn off BLUE LED 
-		bcf	    TICON, TMR1ON	    ; Disable Timer1 with TMR1ON bits of T1CON
+		bcf	    T1CON, TMR1ON	    ; Disable Timer1 with TMR1ON bits of T1CON
 		bcf	    PIR1, TMR1IF	    ; Clear TMR1IF in PIR1
-
  
-Pop            movf        PCLATH_TEMP,w       ;store saved PCLATH value in WREG
-               movwf       PCLATH              ;restore PCLATH
-               movf        STATUS_TEMP,w       ;store saved STATUS value in WREG
-               movwf       STATUS              ;restore STATUS
-               swapf       WREG_TEMP,f         ;prepare WREG to be restore by swapping nibbles once
-               swapf       WREG_TEMP,w         ;restore WREG keeping STATUS bits
-               retfie                          ;return from interrupt, reenabling global interrupts
+Pop            movf        PCLATH_TEMP,w	    ;store saved PCLATH value in WREG
+               movwf       PCLATH		    ;restore PCLATH
+               movf        STATUS_TEMP,w	    ;store saved STATUS value in WREG
+               movwf       STATUS		    ;restore STATUS
+               swapf       WREG_TEMP,f		    ;prepare WREG to be restore by swapping nibbles once
+               swapf       WREG_TEMP,w		    ;restore WREG keeping STATUS bits
+               retfie				    ;return from interrupt, reenabling global interrupts
 
 ;******************** Interrupt Subroutines ******************;	       
 	       
-UpdateLEDs:
+UpdateDataLEDs:
 	
 UpdateRedLED
-		btfsc	   RecvDataRegister, RED_LED	   ;skip next instruction if RED_
-    
+		btfsc	    RecvDataRegister, RED_LED_BIT   ; skip next instruction if RED LED BIT in data received is clear
+		bsf	    LATA, RED_LED		    ; turn red LED ON
+		btfss	    RecvDataRegister, RED_LED_BIT   ; skip next instruction if RED LED BIT in data received is set
+		bcf	    LATA, RED_LED		    ; turn red LED OFF
     
 UpdateYellowLED
-    
+		btfsc	    RecvDataRegister, YELLOW_LED_BIT	; skip next instruction if YELLOW LED BIT in data received is clear
+		bsf	    LATA, YELLOW_LED			; turn YELLOW LED ON
+		btfss	    RecvDataRegister, YELLOW_LED_BIT	; skip next instruction if YELLOW LED BIT in data received is set
+		bcf	    LATA, YELLOW_LED			; turn YELLOW LED OFF
 
 UpdateGreenLED
-	       
-	       
-	       
+		btfsc	    RecvDataRegister, GREEN_LED_BIT	; skip next instruction if GREEN LED BIT in data received is clear
+		bsf	    LATA, GREEN_LED			; turn GREEN LED ON
+		btfss	    RecvDataRegister, GREEN_LED_BIT	; skip next instruction if GREEN LED BIT in data received is set
+		bcf	    LATA, GREEN_LED			; turn GREEN LED OFF
+		
+		return	    ; end of helper routine
+	    
 ;******************** Initialialization Routines ******************;
 
 InitGPIO:   ;Set up Pins initialized to the following:
