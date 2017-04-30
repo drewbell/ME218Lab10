@@ -1,4 +1,4 @@
-MPASM 5.68                     LAB10MAIN.ASM   4-29-2017  10:29:59         PAGE  1
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  1
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -33,76 +33,326 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
                       00017  
                       00018 ;       Defines
                       00019     
-                      00020 #define BitZero     0
-                      00021 #define BitOne      1
-                      00022 #define BitTwo      2
-                      00023 #define BitThree    3
-                      00024 #define BitFour     4
-                      00025 #define BitFive     5
+                      00020 #define BIT_ZERO            0
+                      00021 #define BIT_ONE             1
+                      00022 #define BIT_TWO             2
+                      00023 #define BIT_THREE           3
+                      00024 #define BIT_FOUR            4
+                      00025 #define BIT_FIVE            5
                       00026     
-                      00027 #define BitZeroHi   1
-                      00028 #define BitOneHi    2
-                      00029 #define BitTwoHi    4
-                      00030 #define BitThreeHi  8
-                      00031 #define BitFourHi   16
-                      00032 #define BitFiveHi   32
+                      00027 #define BIT_ZERO_HI         1
+                      00028 #define BIT_ONE_HI          2
+                      00029 #define BIT_TWO_HI          4
+                      00030 #define BIT_THREE_HI        8
+                      00031 #define BIT_FOUR_HI         16
+                      00032 #define BIT_FIVE_HI         32
                       00033     
-                      00034 #define BitsHi      ffh
-                      00035     
-                      00036 ;
-                      00037 ;               Variable definitions
-                      00038 ;
-                      00039     
-                      00040 ; INSERT VARIABLES HERE
-                      00041     
-                      00042         org         0           ;set location 0 in program memory as instruction to go to Main
-0000   2???           00043         goto        Main
-MPASM 5.68                     LAB10MAIN.ASM   4-29-2017  10:29:59         PAGE  2
+                      00034 #define RED_LED             00h
+                      00035 #define YELLOW_LED          01h
+                      00036 #define GREEN_LED           02h
+                      00037 #define BLUE_LED            10h
+                      00038     
+                      00039 #define RED_LED_BIT         04h
+                      00040 #define YELLOW_LED_BIT      08h
+                      00041 #define GREEN_LED_BIT       10h
+                      00042 
+                      00043 ; bits in RecvStatus Byte
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  2
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-                      00044        ; org         4           ;set location 4 in program memory as instruction to go to ISR
-                      00045        ; goto        ISR
-                      00046         org         5           ;set location 5 in program memory as start of rest of code    
-                      00047         
-                      00048         
-                      00049         
-0005                  00050 Main:       ;Initializations
-0005   2???           00051             call        InitGPIO                 ; initialize GPIO pins    
-                      00052             
-0006   0000           00053 Run:        Nop                                       
-0007   0000           00054             Nop
-0008   2???           00055             goto        Run
-                      00056 
-0009   2???           00057 HUAD:       goto        $                  ; hang here at the end  
-                      00058     
-                      00059 ;******************** Initialialization Routines ******************;
-                      00060 
-000A                  00061 InitGPIO:   ;Set up Pins initialized to the following:
-                      00062             ; RA0 = OUTPUT  (Red LED)
-                      00063             ; RA1 = OUTPUT  (Yellow LED)
-                      00064             ; RA2 = OUTPUT  (Green LED)
-                      00065             ; RA4 = OUTPUT  (Blue LED)
-                      00066             ; RA5 = INPUT   (Comm Line)
-                      00067 
-000A   1283 1303      00068             banksel      PORTA           ; Go to bank containing PortA
-000C   0185           00069             clrf         PORTA           ; Init PORTA
-000D   1283 1703      00070             banksel      LATA            ; Go to bank containing PortA Data Latch
-000F   0185           00071             clrf         LATA            ; clear latch 
-0010   1683 1703      00072             banksel      ANSELA          ; Go to bank containing ANSELA
-0012   0185           00073             clrf         ANSELA          ; clear ANSELA to enable digital I/O
-0013   1683 1303      00074             banksel      TRISA           ; Go to bank containing TRISA
-0015   3020           00075             movlw        b'00100000'     ; Prep WREG to set RA<5> as input and set RA<4,2:0> as outputs
-0016   0085           00076             movwf        TRISA           ; move WREG into TRISA
-0017   1283 1703      00077             banksel      LATA            ; switch to bank containing LATA
-0019   3017           00078             movlw        b'00010111'     ; Set all LED pins high to test LEDs
-001A   0085           00079             movwf        LATA            ; Write to the latch
-001B   0008           00080             return    
-                      00081 ;
-3FC6                  00082     end                     ; tell the assembler we are done
-MPASM 5.68                     LAB10MAIN.ASM   4-29-2017  10:29:59         PAGE  3
+                      00044 #define RecvStarting 0      ;make sure default to decimal is set for these defines
+                      00045 #define RecvDataReady 1     
+                      00046 #define RecvFramingErr 2
+                      00047 #define RecvActive
+                      00048     
+                      00049 #define ALL_BITS_HI         ffh
+                      00050     
+                      00051 #define HALF_BIT_TIME       d'79'
+                      00052 #define ONE_BIT_TIME        d'158'
+                      00053     
+                      00054 ;
+                      00055 ;               Variable definitions
+                      00056 ;
+  00000070            00057 WREG_TEMP           equ     0x70       ; for saving WREG in ISR, saved into common RAM
+  00000071            00058 STATUS_TEMP         equ     0x71       ; for saving STATUS in ISR, saved into common RAM
+  00000072            00059 PCLATH_TEMP         equ     0x72       ; for saving PCLATH in ISR, saved into common RAM
+  00000073            00060 RecvShiftCounter    equ     0x73       ; index for moving through tables
+  00000074            00061 RecvShiftRegister   equ     0x74       ; var for setting direction of spin
+  00000075            00062 RecvDataRegister    equ     0x75       ; var for setting mode of spinning
+  00000076            00063 RecvStatus          equ     0x76       ; byte containing RecvStarting (0), RecvDataReady (1), 
+                      00064                                         ; RecvFramingErr (2), and RecvActive (3)
+                      00065 
+                      00066                 org         0           ;set location 0 in program memory as instruction to go to Main
+0000   2???           00067                 goto        Main
+                      00068                 org         4           ;set location 4 in program memory as instruction to go to ISR
+0004   2???           00069                 goto        ISR
+                      00070                 org         5           ;set location 5 in program memory as start of rest of code    
+                      00071       
+                      00072         
+0005                  00073 Main:           ;Initializations
+                      00074             
+0005   2???           00075                 call        InitGPIO                ; initialize GPIO pins   
+0006   2???           00076                 call        InitRxIOC               ; initialize RA5 for interrupt on falling edge
+0007   2???           00077                 call        InitRxLEDTimer          ; intialize Timer1 for 0.5s LED pulse upon RX
+0008   01F6           00078                 clrf        RecvStatus              ; clears RecvStarting, RecvDataReady, RecvFramingErr
+                            , RecvActive
+0009   01F3           00079                 clrf        RecvShiftCounter        ; clear RecvShiftCounter
+000A   1283 1303      00080                 banksel     INTCON                  ; switch to bank 0 for INTCON 
+000C   178B           00081                 bsf         INTCON, GIE             ; enable interrupts globally
+                      00082             
+000D   0000           00083 Run:            Nop                                       
+000E   0000           00084                 Nop
+000F   2???           00085                 goto        Run
+                      00086 
+0010   2???           00087 HUAD:           goto        $               ; hang here at the end  
+                      00088     
+                      00089 ;******************** Interrupt Service Routine *******************;
+                      00090                             
+0011                  00091 ISR: ;start of ISR
+0011   00F0           00092 Push            movwf       WREG_TEMP       ; save away W Register right off the bat
+0012   0803           00093                 movf        STATUS,w        ; move status into W to prepare for saving
+0013   0183           00094                 clrf        STATUS          ; clear status bits to change to file register bank 0
+0014   00F1           00095                 movwf       STATUS_TEMP     ; save away Status and
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  3
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0015   080A           00096                 movf        PCLATH,w        ; store PCLATH in WREG
+0016   00F2           00097                 movwf       PCLATH_TEMP     ; save PCLATH value
+0017   018A           00098                 clrf        PCLATH          ; ISR should configure bank as required
+                      00099 
+0018                  00100 ISR_BODY:
+                      00101             ;If IOCIF set (service interrupts for interrupts on change)
+0018   1283 1303      00102                 banksel     IOCAF                   ;change to bank containing IOC flags for falling edg
+                            es
+001A   1E88           00103                 btfss       IOCAF, IOCAF5           ;If RX interrupt is active, skip down to deal with I
+                            OCAF5 routine
+001B   2???           00104                 goto        ISR_TIMER2      ;otherwise, skip down to next interrupt
+                      00105             
+001C                  00106 RX_FALLING_EDGE
+001C   1283 1703      00107                 banksel     PR2             ;change to bank with PR2
+001E   304F           00108                 movlw       HALF_BIT_TIME           ;Program Timer2 to fire interrupt ½ bit time 
+001F   1283 1703      00109                 banksel     T2CON                   ; move to bank containing T2CON
+0021   1512           00110                 bsf         T2CON, TMR2ON           ; turn ON the timer2
+0022   1476           00111                 bsf         RecvStatus, RecvStarting        ;Set RecvStarting to 1 
+0023   3007           00112                 movlw       07h             ;Prepare WREG to set RecvShiftCounter to 7  
+0024   00F3           00113                 movwf       RecvShiftCounter    ;write WREG to RecvShiftCounter
+0025   1283 1303      00114                 banksel     IOCAF                   ;change to bank with IOC falling edge flags
+0027   1288           00115                 bcf         IOCAF, IOCAF5           ;Clear IOCAF bit associated with RX
+0028   1288           00116                 bcf         IOCAN, RA5      ;Disable falling IOC on RX
+                      00117                 ;Endif IOC on RX
+                      00118                 ;Process other IOC interrupts as needed
+                      00119                 ;Endif (IOCF set)
+                      00120 
+0029                  00121 ISR_TIMER2      ;if TMR2 interrupt flag is active, response to subcases
+0029   1283 1303      00122                 banksel     PIR1
+002B   1C8C           00123                 btfss       PIR1, TMR2IF            ; skip next command if there is a pending Timer2 int
+                            errupt
+002C   2???           00124                 goto        ISR_TIMER1              ; otherwise go to check if Timer1 interrupt has fire
+                            d
+                      00125             
+002D   1C76           00126 Timer2_Reponse  btfss       RecvStatus, RecvStarting    ;if RecvStarting set (doing start bit)
+002E   2???           00127                 goto        DataBit
+                      00128                 
+002F   1076           00129 StartBit        bcf         RecvStatus, RecvStarting    ;clear RecvStarting
+0030   1A85           00130                 btfsc       PORTA,RA5               ; if PortA pin RA5 (RX) is low, we got good start bi
+                            t
+0031   2???           00131                 goto        BadStartBit             ; otherwise goto BadStartBit
+                      00132                 
+0032   309E           00133 GoodStartBit    movlw       ONE_BIT_TIME            ; load up number representing one bit time into WREG
+0033   1283 1703      00134                 banksel     PR2                     ; change to bank containing PR2
+0035   0091           00135                 movwf       PR2                     ; program Timer2 to fire interrupt after 1 bit time
+0036   1283 1303      00136                 banksel     TMR1H                   ; change to bank 0 with TMR1L and TMR1H
+0038   0190           00137                 clrf        TMR1H                   ; clearing HI 8 bits
+0039   018F           00138                 clrf        TMR1L                   ; clearing LO 8 bits        
+003A   1411           00139                 bsf         T1CON, TMR1ON           ; Enable Timer1 with TMR1ON bits of T1CON 
+003B   1283 1703      00140                 banksel     LATA                    ; change to bank with LATA
+Warning[202]: Argument out of range.  Least significant bits used.
+003D   1405           00141                 bsf         LATA, BLUE_LED          ; Raise RA4 to turn on blue LED
+003E   2???           00142                 goto        ClearTMR2Flag           ; jump down to clear flag
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  4
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00143                 
+003F                  00144 BadStartBit     ;else ( RX is high, so bad start bit)
+003F   1283 1303      00145                 banksel     IOCAF                   ;change to bank with IOC falling edge flags
+0041   1688           00146                 bsf         IOCAN, RA5              ;program IOC Negative on RX and enable interrupt
+0042   2???           00147                 goto        ISR_TIMER1              ;skip down to if Timer1 ISR
+                      00148 
+0043                  00149 DataBit         ;else (Doing data bit)
+0043   0BF3           00150                 decfsz      RecvShiftCounter,f      ; decrement RecvShiftCounter, store result to file, 
+                            and skip next instr if 0
+0044   2???           00151                 goto        NewDataBit              ; process new data bit
+0045   2???           00152                 goto        StopBit                 ; process stop bit
+                      00153                 
+0046   1003           00154 NewDataBit      bcf         STATUS, C               ; clear carry bit to prepare for right shift
+0047   0CF4           00155                 rrf         RecvShiftRegister,f     ; shift RecvShiftRegister 1 position right
+0048   0805           00156                 movf        PORTA,w                 ; move value on PortA to WREG
+0049   1A80           00157                 btfsc       W , RA5                 ; if RA5 is low, skip next insruction
+004A   16F4           00158                 bsf         RecvShiftRegister,RA5   ; write that value on line was HIGH
+004B   1E80           00159                 btfss       W , RA5                 ; if RA5 is high, skip next instruction
+004C   12F4           00160                 bcf         RecvShiftRegister,RA5   ; write that value on line was LOW
+004D   2???           00161                 goto        ClearTMR2Flag           ; skip down to clear Timer2 flag
+                      00162                 
+004E                  00163 StopBit         ;else
+                      00164                 ; shift RecvShiftRegister bits right 2 times to right-justify data, clearing Carry bit e
+                            ach time
+004E   1003           00165                 bcf         STATUS, C               ; clear carry bit to prepare for right shift
+004F   0CF4           00166                 rrf         RecvShiftRegister,f     ; shift RecvShiftRegister 1 position right
+0050   1003           00167                 bcf         STATUS, C               ; clear carry bit to prepare for right shift
+0051   0CF4           00168                 rrf         RecvShiftRegister,f     ; shift RecvShiftRegister 1 position right      
+0052   0874           00169                 movf        RecvShiftRegister,w     ; load RecvShiftRegister into WREG
+0053   00F5           00170                 movwf       RecvDataRegister        ; copy WREG (RecvShiftRegister) to RecvDataRegister
+0054   1E85           00171                 btfss       PORTA, RA5              ; if RA5 is high for stop bit as it should be, skip 
+                            next instruction
+0055   1576           00172                 bsf         RecvStatus, RecvFramingErr      ; RX LOW means bad stop bit, set RecvFraming
+                            Err
+0056   14F6           00173                 bsf         RecvStatus, RecvDataReady       ;set RecvDataReady to 1
+0057   2???           00174                 call        UpdateDataLEDs          ; call routine to update LEDs
+0058   1283 1703      00175                 banksel     T2CON                   ; move to bank containing T2CON
+005A   1112           00176                 bcf         T2CON, TMR2ON           ; disable TMR2 interrupt
+005B   1283 1703      00177                 banksel     IOCAN                   ; change to bank with IOC falling edge enable regist
+                            er
+005D   1688           00178                 bsf         IOCAN, RA5              ; Enable falling IOC on RX;program IOC Negative on R
+                            X and enable interrupt
+                      00179 
+005E                  00180 ClearTMR2Flag
+005E   1283 1303      00181                 banksel     PIR1                    ; go to bank with PIR1 (Peripheral Interrut Request 
+                            Register 1)
+0060   108C           00182                 bcf         PIR1, TMR2IF                    ; clear Timer2Interrupt
+                      00183                
+                      00184                 ; End of TMR2 interrupt response
+                      00185 
+0061                  00186 ISR_TIMER1
+0061   1283 1303      00187                 banksel     PIR1                    ; go to register containing the peripheral interrupt
+                             flags
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  5
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0063   1C0C           00188                 btfss       PIR1, TMR1IF            ; If Timer1 interrupt is active, skip next instructi
+                            on
+0064   2???           00189                 goto        Pop                     ; skip down to POP since Timer1 interrupt is not act
+                            ive
+Warning[202]: Argument out of range.  Least significant bits used.
+0065   1005           00190                 bcf         LATA, BLUE_LED          ; Lower RA4 to turn off BLUE LED 
+0066   1011           00191                 bcf         T1CON, TMR1ON           ; Disable Timer1 with TMR1ON bits of T1CON
+0067   100C           00192                 bcf         PIR1, TMR1IF            ; Clear TMR1IF in PIR1
+                      00193  
+0068   0872           00194 Pop            movf        PCLATH_TEMP,w            ;store saved PCLATH value in WREG
+0069   008A           00195                movwf       PCLATH                   ;restore PCLATH
+006A   0871           00196                movf        STATUS_TEMP,w            ;store saved STATUS value in WREG
+006B   0083           00197                movwf       STATUS                   ;restore STATUS
+006C   0EF0           00198                swapf       WREG_TEMP,f              ;prepare WREG to be restore by swapping nibbles once
+006D   0E70           00199                swapf       WREG_TEMP,w              ;restore WREG keeping STATUS bits
+006E   0009           00200                retfie                               ;return from interrupt, reenabling global interrupts
+                      00201 
+                      00202 ;******************** Interrupt Subroutines ******************;        
+                      00203                
+006F                  00204 UpdateDataLEDs:
+                      00205         
+006F                  00206 UpdateRedLED
+006F   1A75           00207                 btfsc       RecvDataRegister, RED_LED_BIT   ; skip next instruction if RED LED BIT in da
+                            ta received is clear
+0070   1405           00208                 bsf         LATA, RED_LED                   ; turn red LED ON
+0071   1E75           00209                 btfss       RecvDataRegister, RED_LED_BIT   ; skip next instruction if RED LED BIT in da
+                            ta received is set
+0072   1005           00210                 bcf         LATA, RED_LED                   ; turn red LED OFF
+                      00211     
+0073                  00212 UpdateYellowLED
+Warning[202]: Argument out of range.  Least significant bits used.
+0073   1875           00213                 btfsc       RecvDataRegister, YELLOW_LED_BIT    ; skip next instruction if YELLOW LED BI
+                            T in data received is clear
+0074   1485           00214                 bsf         LATA, YELLOW_LED                    ; turn YELLOW LED ON
+Warning[202]: Argument out of range.  Least significant bits used.
+0075   1C75           00215                 btfss       RecvDataRegister, YELLOW_LED_BIT    ; skip next instruction if YELLOW LED BI
+                            T in data received is set
+0076   1085           00216                 bcf         LATA, YELLOW_LED                    ; turn YELLOW LED OFF
+                      00217 
+0077                  00218 UpdateGreenLED
+Warning[202]: Argument out of range.  Least significant bits used.
+0077   1875           00219                 btfsc       RecvDataRegister, GREEN_LED_BIT     ; skip next instruction if GREEN LED BIT
+                             in data received is clear
+0078   1505           00220                 bsf         LATA, GREEN_LED                     ; turn GREEN LED ON
+Warning[202]: Argument out of range.  Least significant bits used.
+0079   1C75           00221                 btfss       RecvDataRegister, GREEN_LED_BIT     ; skip next instruction if GREEN LED BIT
+                             in data received is set
+007A   1105           00222                 bcf         LATA, GREEN_LED                     ; turn GREEN LED OFF
+                      00223                 
+007B   0008           00224                 return      ; end of helper routine
+                      00225             
+                      00226 ;******************** Initialialization Routines ******************;
+                      00227 
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  6
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+007C                  00228 InitGPIO:   ;Set up Pins initialized to the following:
+                      00229             ; RA0 = OUTPUT  (Red LED)
+                      00230             ; RA1 = OUTPUT  (Yellow LED)
+                      00231             ; RA2 = OUTPUT  (Green LED)
+                      00232             ; RA4 = OUTPUT  (Blue LED)
+                      00233             ; RA5 = INPUT   (Comm Line)
+                      00234 
+007C   1283 1303      00235             banksel      PORTA           ; Go to bank containing PortA
+007E   0185           00236             clrf         PORTA           ; Init PORTA
+007F   1283 1703      00237             banksel      LATA            ; Go to bank containing PortA Data Latch
+0081   0185           00238             clrf         LATA            ; clear latch 
+0082   1683 1703      00239             banksel      ANSELA          ; Go to bank containing ANSELA
+0084   0185           00240             clrf         ANSELA          ; clear ANSELA to enable digital I/O
+0085   1683 1303      00241             banksel      TRISA           ; Go to bank containing TRISA
+0087   3020           00242             movlw        b'00100000'     ; Prep WREG to set RA<5> as input and set RA<4,2:0> as outputs
+0088   0085           00243             movwf        TRISA           ; move WREG into TRISA
+0089   1283 1703      00244             banksel      LATA            ; switch to bank containing LATA
+008B   3000           00245             movlw        b'00000000'     ; Set all LED pins LOW to start
+008C   0085           00246             movwf        LATA            ; Write to the latch
+008D   0008           00247             return    
+                      00248 
+008E                  00249 InitRxIOC:          ;to set up RA5 to detect falling edge IOC at start of message
+008E   1283 1303      00250             banksel     INTCON          ;change to bank containing INCON 
+0090   158B           00251             bsf         INTCON, IOCIE   ;edit interrupt control register to turn on interrupt on change 
+0091   1283 1703      00252             banksel     IOCAN           ;change to bank containing IOCAN to 
+0093   1688           00253             bsf         IOCAN, RA5      ;set RA5 as interrupt on falling edge
+0094   0008           00254             return 
+                      00255 
+0095                  00256 InitRxLEDTimer:     ;init Timer1 for Rx LED pulse
+                      00257             ;Set Timer1 prescale to 1:8 by setting T1CKPS bits of T1CON to 1,1
+0095   1283 1303      00258             banksel     T1CON           ; change to bank containing T1CON
+0097   1611           00259             bsf         T1CON,T1CKPS0   ; set T1CKPS0 hi
+0098   1691           00260             bsf         T1CON,T1CKPS1   ; set T1CKPS1 hi
+                      00261             ;Clear TMR1H and TMR1L to reset timer to zero
+0099   1283 1303      00262             banksel TMR1H               ; change to bank 0 with TMR1L and TMR1H
+009B   0190           00263             clrf        TMR1H           ; clearing HI 8 bits
+009C   018F           00264             clrf        TMR1L           ; clearing LO 8 bits
+009D   1683 1303      00265             banksel     PIE1            ; change to data memory bank with PIE1
+009F   140C           00266             bsf         PIE1, TMR1IE    ;Enable peripheral interrupts by setting TMR1GIE in PIE1
+00A0   0008           00267             return
+                      00268             
+00A1                  00269 InitTimer2:         ;Sets up Timer2: TMR2 = 0, PR2 = 75 = half bit time from reset
+00A1   1683 1303      00270             banksel     PIE1                ; switch to bank containing PIE1
+00A3   148C           00271             bsf         PIE1, TMR2IE        ; in PIE1, timer2 interrupt
+00A4   1283 1703      00272             banksel     T2CON               ; switch to bank with T2CON
+00A6   3078           00273             movlw       b'01111000'         ; prescale of 1, post-scale of 16, timer off
+00A7   0092           00274             movwf       T2CON               ; move value from WREG into T2CON
+00A8   1283 1703      00275             banksel     PR2                 ; move to bank containing PR2
+00AA   304F           00276             movlw       HALF_BIT_TIME       ; move starting value of PR2 to WREG
+00AB   0091           00277             movwf       PR2                 ; write to PR2 reg value of 250
+00AC   0008           00278             return
+                      00279    
+3FC6                  00280     end                     ; tell the assembler we are done
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  7
 
 
 SYMBOL TABLE
@@ -120,6 +370,7 @@ ADON                              00000000
 ADRES                             0000001C
 ADRESH                            0000001D
 ADRESL                            0000001C
+ALL_BITS_HI                       ffh
 ANSA0                             00000000
 ANSA1                             00000001
 ANSA2                             00000002
@@ -127,19 +378,20 @@ ANSA4                             00000004
 ANSA5                             00000005
 ANSELA                            00000185
 APFCON                            00000188
-BitFive                           5
-BitFiveHi                         32
-BitFour                           4
-BitFourHi                         16
-BitOne                            1
-BitOneHi                          2
-BitThree                          3
-BitThreeHi                        8
-BitTwo                            2
-BitTwoHi                          4
-BitZero                           0
-BitZeroHi                         1
-BitsHi                            ffh
+BIT_FIVE                          5
+BIT_FIVE_HI                       32
+BIT_FOUR                          4
+BIT_FOUR_HI                       16
+BIT_ONE                           1
+BIT_ONE_HI                        2
+BIT_THREE                         3
+BIT_THREE_HI                      8
+BIT_TWO                           2
+BIT_TWO_HI                        4
+BIT_ZERO                          0
+BIT_ZERO_HI                       1
+BLUE_LED                          10h
+BadStartBit                       0000003F
 C                                 00000000
 C1CON0                            0000009D
 C1CON1                            0000009E
@@ -159,14 +411,14 @@ C1SP                              00000002
 C1SYNC                            00000000
 C1ZLF                             00000003
 C2CON0                            0000009B
-C2CON1                            0000009C
-C2HYS                             00000001
-MPASM 5.68                     LAB10MAIN.ASM   4-29-2017  10:29:59         PAGE  4
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  8
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+C2CON1                            0000009C
+C2HYS                             00000001
 C2IE                              00000005
 C2IF                              00000005
 C2INTN                            00000006
@@ -211,26 +463,28 @@ COG1IF                            00000002
 COG1O0SEL                         00000000
 COG1O1SEL                         00000001
 COG1PH                            00000192
+ClearTMR2Flag                     0000005E
 DACCON0                           00000091
 DACCON1                           00000092
 DACEN                             00000007
 DACOE                             00000005
 DACPSS0                           00000002
 DACR0                             00000000
-DACR1                             00000001
-DACR2                             00000002
-DACR3                             00000003
-MPASM 5.68                     LAB10MAIN.ASM   4-29-2017  10:29:59         PAGE  5
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  9
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+DACR1                             00000001
+DACR2                             00000002
+DACR3                             00000003
 DACR4                             00000004
 DACRNG                            00000006
 DC                                00000001
 DC1B0                             00000004
 DC1B1                             00000005
+DataBit                           00000043
 F                                 00000001
 FSR                               00000004
 FVRBUFEN                          00000005
@@ -275,21 +529,24 @@ G1OE1                             00000006
 G1PH0                             00000000
 G1PH1                             00000001
 G1PH2                             00000002
-G1PH3                             00000003
-G1POL0                            00000003
-G1POL1                            00000004
-G1RS0                             00000000
-MPASM 5.68                     LAB10MAIN.ASM   4-29-2017  10:29:59         PAGE  6
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE 10
 
 
 SYMBOL TABLE
   LABEL                             VALUE 
 
+G1PH3                             00000003
+G1POL0                            00000003
+G1POL1                            00000004
+G1RS0                             00000000
 G1RS1                             00000001
 G1RS2                             00000002
 G1RSIM                            00000006
 GIE                               00000007
 GO_NOT_DONE                       00000001
+GREEN_LED                         02h
+GREEN_LED_BIT                     10h
+GoodStartBit                      00000032
 H1CKPS0                           00000000
 H1CKPS1                           00000001
 H1ERS0                            00000002
@@ -302,6 +559,7 @@ H1OUTPS1                          00000004
 H1OUTPS2                          00000005
 H1OUTPS3                          00000006
 H1REREN                           00000000
+HALF_BIT_TIME                     d'79'
 HLT1CON0                          00000115
 HLT1CON1                          00000116
 HLTMR1                            00000113
@@ -309,7 +567,7 @@ HLTMR1IE                          00000002
 HLTMR1IF                          00000002
 HLTPR1                            00000114
 HTS                               00000002
-HUAD                              00000009
+HUAD                              00000010
 INDF                              00000000
 INTCON                            0000000B
 INTE                              00000004
@@ -330,6 +588,12 @@ IOCAN3                            00000003
 IOCAN4                            00000004
 IOCAN5                            00000005
 IOCAP                             00000088
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE 11
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 IOCAP0                            00000000
 IOCAP1                            00000001
 IOCAP2                            00000002
@@ -338,16 +602,17 @@ IOCAP4                            00000004
 IOCAP5                            00000005
 IOCIE                             00000003
 IOCIF                             00000000
-MPASM 5.68                     LAB10MAIN.ASM   4-29-2017  10:29:59         PAGE  7
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 IRCF0                             00000004
 IRCF1                             00000005
 IRP                               00000007
-InitGPIO                          0000000A
+ISR                               00000011
+ISR_BODY                          00000018
+ISR_TIMER1                        00000061
+ISR_TIMER2                        00000029
+InitGPIO                          0000007C
+InitRxIOC                         0000008E
+InitRxLEDTimer                    00000095
+InitTimer2                        000000A1
 LATA                              00000105
 LATA0                             00000000
 LATA1                             00000001
@@ -365,11 +630,14 @@ NOT_POR                           00000001
 NOT_RAPU                          00000007
 NOT_T1SYNC                        00000002
 NOT_TO                            00000004
+NewDataBit                        00000046
+ONE_BIT_TIME                      d'158'
 OPTION_REG                        00000081
 OSCCON                            0000008F
 OSCTUNE                           00000189
 PCL                               00000002
 PCLATH                            0000000A
+PCLATH_TEMP                       00000072
 PCON                              0000010F
 PEIE                              00000006
 PIE1                              0000008C
@@ -379,6 +647,12 @@ PIR2                              0000000D
 PMADR                             0000018E
 PMADRH                            0000018F
 PMADRL                            0000018E
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE 12
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 PMCON1                            0000018C
 PMCON2                            0000018D
 PMDAT                             00000190
@@ -390,6 +664,8 @@ PS0                               00000000
 PS1                               00000001
 PS2                               00000002
 PSA                               00000003
+Pop                               00000068
+Push                              00000011
 RA0                               00000000
 RA1                               00000001
 RA2                               00000002
@@ -397,19 +673,27 @@ RA3                               00000003
 RA4                               00000004
 RA5                               00000005
 RD                                00000000
-MPASM 5.68                     LAB10MAIN.ASM   4-29-2017  10:29:59         PAGE  8
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
+RED_LED                           00h
+RED_LED_BIT                       04h
 RP0                               00000005
 RP1                               00000006
-Run                               00000006
+RX_FALLING_EDGE                   0000001C
+RecvActive                        
+RecvDataReady                     1
+RecvDataRegister                  00000075
+RecvFramingErr                    2
+RecvShiftCounter                  00000073
+RecvShiftRegister                 00000074
+RecvStarting                      0
+RecvStatus                        00000076
+Run                               0000000D
 SLRA0                             00000000
 SLRA2                             00000002
 SLRCONA                           0000010D
 STATUS                            00000003
+STATUS_TEMP                       00000071
+StartBit                          0000002F
+StopBit                           0000004E
 T0CS                              00000005
 T0IE                              00000005
 T0IF                              00000002
@@ -422,6 +706,12 @@ T1GGO                             00000003
 T1GGO_NOT_DONE                    00000003
 T1GPOL                            00000006
 T1GSEL                            00000004
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE 13
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 T1GSPM                            00000004
 T1GSS0                            00000000
 T1GSS1                            00000001
@@ -456,18 +746,17 @@ TRISA1                            00000001
 TRISA2                            00000002
 TRISA3                            00000003
 TRISA4                            00000004
-MPASM 5.68                     LAB10MAIN.ASM   4-29-2017  10:29:59         PAGE  9
-
-
-SYMBOL TABLE
-  LABEL                             VALUE 
-
 TRISA5                            00000005
 TUN0                              00000000
 TUN1                              00000001
 TUN2                              00000002
 TUN3                              00000003
 TUN4                              00000004
+Timer2_Reponse                    0000002D
+UpdateDataLEDs                    0000006F
+UpdateGreenLED                    00000077
+UpdateRedLED                      0000006F
+UpdateYellowLED                   00000073
 VCFG                              00000006
 W                                 00000000
 WPUA                              0000010C
@@ -476,11 +765,20 @@ WPUA1                             00000001
 WPUA2                             00000002
 WPUA3                             00000003
 WPUA4                             00000004
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE 14
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
 WPUA5                             00000005
 WR                                00000001
+WREG_TEMP                         00000070
 WREN                              00000002
+YELLOW_LED                        01h
+YELLOW_LED_BIT                    08h
 Z                                 00000002
-_.org_1_0009                      00000009
+_.org_2_0010                      00000010
 _BOREN_DIS                        00003CFF
 _BOREN_EN                         00003FFF
 _BOREN_SLEEP_DIS                  00003EFF
@@ -509,7 +807,7 @@ _WRT_OFF                          00003FFF
 __12F752                          00000001
 
 Errors   :     0
-Warnings :     0 reported,     0 suppressed
-Messages :     0 reported,     4 suppressed
+Warnings :     6 reported,     0 suppressed
+Messages :     0 reported,    23 suppressed
 
 
