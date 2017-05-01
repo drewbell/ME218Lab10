@@ -53,6 +53,7 @@
 #define HALF_BIT_TIME	    d'79'
 #define ONE_BIT_TIME	    d'158'
 #define	FullShiftCount	    d'8'
+#define MSB		    d'7'
     
 ;
 ;		Variable definitions
@@ -104,22 +105,25 @@ Push		movwf	    WREG_TEMP       ; save away W Register right off the bat
 
 ISR_BODY:
 	    ;If IOCIF set (service interrupts for interrupts on change)
+		btfss	    INTCON, IOCIF	    ; if the interrupt on change for falling edge 
+		goto	    ISR_TIMER2		    ; if not skipped, go to Timer2 interrupt
 		banksel	    IOCAF		    ;change to bank containing IOC flags for falling edges
 		btfss	    IOCAF, IOCAF5	    ;If RX interrupt is active, skip down to deal with IOCAF5 routine
 		goto	    ISR_TIMER2	    ;otherwise, skip down to next interrupt
 	    
-RX_FALLING_EDGE
+RX_FALLING_EDGE 
 		banksel	    PR2			    ; change to bank with PR2
 		movlw	    HALF_BIT_TIME	    ; program Timer2 to fire interrupt ½ bit time 
 		movwf	    PR2			    ; move half bit time into PR2
 		banksel	    T2CON		    ; move to bank containing T2CON
 		bsf	    T2CON, TMR2ON	    ; turn ON the timer2
 		bsf	    RecvStatus, RecvStarting	    ;Set RecvStarting to 1 
-		movlw	    FullShiftCount	    ;Prepare WREG to set RecvShiftCounter to 7	
+		movlw	    FullShiftCount	    ;Prepare WREG to set RecvShiftCounter to 8	
 		movwf	    RecvShiftCounter	    ;write WREG to RecvShiftCounter
 		banksel	    IOCAF		    ;change to bank with IOC falling edge flags
 		bcf	    IOCAF, IOCAF5	    ;Clear IOCAF bit associated with RX
-		bcf	    IOCAN, RA5		    ;Disable falling IOC on RX
+		banksel	    IOCAN		    ; change to bank containing IOCAN
+		bcf	    IOCAN, IOCAN5	    ;Disable falling IOC on RX
 		;Endif IOC on RX
 		;Process other IOC interrupts as needed
 		;Endif (IOCF set)
@@ -129,7 +133,7 @@ ISR_TIMER2	;if TMR2 interrupt flag is active, response to subcases
 		btfss	    PIR1, TMR2IF	    ; skip next command if there is a pending Timer2 interrupt
 		goto	    ISR_TIMER1		    ; otherwise go to check if Timer1 interrupt has fired
 	    
-Timer2_Reponse	btfss	    RecvStatus, RecvStarting    ;if RecvStarting set (doing start bit)
+Timer2_Response	btfss	    RecvStatus, RecvStarting    ;if RecvStarting set (doing start bit)
 		goto	    DataBit
 		
 StartBit	bcf	    RecvStatus, RecvStarting    ;clear RecvStarting
@@ -139,12 +143,6 @@ StartBit	bcf	    RecvStatus, RecvStarting    ;clear RecvStarting
 GoodStartBit	movlw	    ONE_BIT_TIME	    ; load up number representing one bit time into WREG
 		banksel	    PR2			    ; change to bank containing PR2
 		movwf	    PR2			    ; program Timer2 to fire interrupt after 1 bit time
-		banksel	    TMR1H		    ; change to bank 0 with TMR1L and TMR1H
-		clrf	    TMR1H		    ; clearing HI 8 bits
-		clrf	    TMR1L		    ; clearing LO 8 bits	
-		bsf	    T1CON, TMR1ON	    ; Enable Timer1 with TMR1ON bits of T1CON 
-		banksel	    LATA		    ; change to bank with LATA
-		bsf	    LATA, BLUE_LED	    ; Raise RA4 to turn on blue LED
 		decf	    RecvShiftCounter	    ; decrement shift counter
 		goto	    ClearTMR2Flag	    ; jump down to clear flag
 		
@@ -160,11 +158,10 @@ DataBit		;else (Doing data bit)
 		
 NewDataBit	bcf	    STATUS, C		    ; clear carry bit to prepare for right shift
 		rrf	    RecvShiftRegister,f	    ; shift RecvShiftRegister 1 position right
-		movf	    PORTA,w		    ; move value on PortA to WREG
-		btfsc	    W , RA5		    ; if RA5 is low, skip next insruction
-		bsf	    RecvShiftRegister,RA5   ; write that value on line was HIGH
-		btfss	    W , RA5		    ; if RA5 is high, skip next instruction
-		bcf	    RecvShiftRegister,RA5   ; write that value on line was LOW
+		btfsc	    PORTA, RA5		    ; if RA5 is low, skip next insruction
+		bsf	    RecvShiftRegister,MSB   ; write that value on line was HIGH (0x74)
+		btfss	    PORTA, RA5		    ; if RA5 is high, skip next instruction
+		bcf	    RecvShiftRegister,MSB   ; write that value on line was LOW (0x74)
 		goto	    ClearTMR2Flag	    ; skip down to clear Timer2 flag
 		
 StopBit		;else
@@ -184,7 +181,8 @@ StopBit		;else
 		goto	    DisableT2			    ; Bit0 of address wrong, skip past LED update to DisableT2
 		btfss	    RecvDataRegister, BIT_ONE	    ; if bit 1 is set, skip next instruction
 		goto	    DisableT2			    ; Bit1 of address wrong, skip past LED update to DisableT2
-		call	    UpdateDataLEDs		    ; call routine to update LEDs
+		call	    UpdateDataLEDs		    ; call subroutine to update LEDs
+		call	    TurnOnBlueLED		    ; call rubroutine to start pulse of blue LED
 
 DisableT2		
 		banksel	    T2CON		    ; move to bank containing T2CON
@@ -202,9 +200,10 @@ ISR_TIMER1
 		banksel	    PIR1		    ; go to register containing the peripheral interrupt flags
 		btfss	    PIR1, TMR1IF	    ; If Timer1 interrupt is active, skip next instruction
 		goto	    Pop			    ; skip down to POP since Timer1 interrupt is not active
-		bcf	    LATA, BLUE_LED	    ; Lower RA4 to turn off BLUE LED 
 		bcf	    T1CON, TMR1ON	    ; Disable Timer1 with TMR1ON bits of T1CON
 		bcf	    PIR1, TMR1IF	    ; Clear TMR1IF in PIR1
+		banksel	    LATA		    ; change to bank containing LATA
+		bcf	    LATA, BLUE_LED	    ; Lower RA4 to turn off BLUE LED 
  
 Pop            movf        PCLATH_TEMP,w	    ;store saved PCLATH value in WREG
                movwf       PCLATH		    ;restore PCLATH
@@ -237,6 +236,15 @@ UpdateGreenLED
 		bcf	    LATA, GREEN_LED			; turn GREEN LED OFF
 		
 		return	    ; end of helper routine
+		
+TurnOnBlueLED
+		banksel	    TMR1H		    ; change to bank 0 with TMR1L and TMR1H
+		clrf	    TMR1H		    ; clearing HI 8 bits
+		clrf	    TMR1L		    ; clearing LO 8 bits	
+		bsf	    T1CON, TMR1ON	    ; Enable Timer1 with TMR1ON bits of T1CON 
+		banksel	    LATA		    ; change to bank with LATA
+		bsf	    LATA, BLUE_LED	    ; Raise RA4 to turn on blue LED
+		return
 	    
 ;******************** Initialialization Routines ******************;
 
@@ -257,7 +265,7 @@ InitGPIO:   ;Set up Pins initialized to the following:
             movlw        b'00100000'     ; Prep WREG to set RA<5> as input and set RA<4,2:0> as outputs
             movwf        TRISA           ; move WREG into TRISA
             banksel      LATA            ; switch to bank containing LATA
-            movlw        b'00000111'     ; Set all LED pins LOW to start
+            movlw        b'00000001'     ; Set all LED pins LOW to start
             movwf        LATA            ; Write to the latch
             return    
 
@@ -278,7 +286,7 @@ InitRxLEDTimer:	    ;init Timer1 for Rx LED pulse
 	    clrf	TMR1H		; clearing HI 8 bits
 	    clrf	TMR1L		; clearing LO 8 bits
 	    banksel	PIE1		; change to data memory bank with PIE1
-	    bsf		PIE1, TMR1IE	;Enable the timer peripheral interrupts by setting TMR1GIE in PIE1
+	    bsf		PIE1, TMR1IE	;Enable the timer peripheral interrupts by setting TMR1IE in PIE1
 	    return
 	    
 InitTimer2:	    ;Sets up Timer2: TMR2 = 0, PR2 = 75 = half bit time from reset
