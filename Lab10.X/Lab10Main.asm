@@ -17,39 +17,39 @@
  
 ;       Defines
     
-#define BIT_ZERO	    0
-#define BIT_ONE		    1
-#define BIT_TWO		    2
-#define BIT_THREE	    3
-#define BIT_FOUR	    4
-#define BIT_FIVE	    5
+#define BIT_ZERO	    d'0'
+#define BIT_ONE		    d'1'
+#define BIT_TWO		    d'2'
+#define BIT_THREE	    d'3'
+#define BIT_FOUR	    d'4'
+#define BIT_FIVE	    d'5'
     
-#define BIT_ZERO_HI	    1
-#define BIT_ONE_HI	    2
-#define BIT_TWO_HI	    4
-#define BIT_THREE_HI	    8
-#define BIT_FOUR_HI	    16
-#define BIT_FIVE_HI	    32
+#define BIT_ZERO_HI	    b'0000 0001'
+#define BIT_ONE_HI	    b'0000 0010'
+#define BIT_TWO_HI	    b'0000 0100'
+#define BIT_THREE_HI	    b'0000 1000'
+#define BIT_FOUR_HI	    b'0001 0000'
+#define BIT_FIVE_HI	    b'0010 0000'
+        
+#define	RED_LED		    d'0'	; Pin RA0
+#define YELLOW_LED	    d'1'	; Pin RA1
+#define GREEN_LED	    d'2'        ; Pin RA2
+#define BLUE_LED	    d'5'        ; Pin RA5
     
-#define	RED_LED		    00h
-#define YELLOW_LED	    01h
-#define GREEN_LED	    02h
-#define BLUE_LED	    10h
-    
-#define	RED_LED_BIT	    04h
-#define YELLOW_LED_BIT	    08h
-#define GREEN_LED_BIT	    10h
+#define	RED_LED_BIT	    d'2'	; Bit Number 2 from Msg
+#define YELLOW_LED_BIT	    d'3'	; Bit Number 3 from Msg
+#define GREEN_LED_BIT	    d'4'	; Bit Number 4 from Msg
 
-; bits in RecvStatus Byte
-#define RecvStarting 0	    ;make sure default to decimal is set for these defines
-#define RecvDataReady 1	    
-#define RecvFramingErr 2
-#define RecvActive
+
+#define RecvStarting	    d'0'	; bits numbers in RecvStatus Byte    
+#define RecvDataReady	    d'1'	    
+#define RecvFramingErr	    d'2'
+#define RecvActive	    d'3'
     
 #define ALL_BITS_HI	    ffh
     
-#define HALF_BIT_TIME	    79
-#define ONE_BIT_TIME	    158
+#define HALF_BIT_TIME	    d'79'
+#define ONE_BIT_TIME	    d'158'
     
 ;
 ;		Variable definitions

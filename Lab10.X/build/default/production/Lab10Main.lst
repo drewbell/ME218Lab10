@@ -1,4 +1,4 @@
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  1
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE  1
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -33,40 +33,40 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
                       00017  
                       00018 ;       Defines
                       00019     
-                      00020 #define BIT_ZERO            0
-                      00021 #define BIT_ONE             1
-                      00022 #define BIT_TWO             2
-                      00023 #define BIT_THREE           3
-                      00024 #define BIT_FOUR            4
-                      00025 #define BIT_FIVE            5
+                      00020 #define BIT_ZERO            d'0'
+                      00021 #define BIT_ONE             d'1'
+                      00022 #define BIT_TWO             d'2'
+                      00023 #define BIT_THREE           d'3'
+                      00024 #define BIT_FOUR            d'4'
+                      00025 #define BIT_FIVE            d'5'
                       00026     
-                      00027 #define BIT_ZERO_HI         1
-                      00028 #define BIT_ONE_HI          2
-                      00029 #define BIT_TWO_HI          4
-                      00030 #define BIT_THREE_HI        8
-                      00031 #define BIT_FOUR_HI         16
-                      00032 #define BIT_FIVE_HI         32
-                      00033     
-                      00034 #define RED_LED             00h
-                      00035 #define YELLOW_LED          01h
-                      00036 #define GREEN_LED           02h
-                      00037 #define BLUE_LED            10h
+                      00027 #define BIT_ZERO_HI         b'0000 0001'
+                      00028 #define BIT_ONE_HI          b'0000 0010'
+                      00029 #define BIT_TWO_HI          b'0000 0100'
+                      00030 #define BIT_THREE_HI        b'0000 1000'
+                      00031 #define BIT_FOUR_HI         b'0001 0000'
+                      00032 #define BIT_FIVE_HI         b'0010 0000'
+                      00033         
+                      00034 #define RED_LED             d'0'        ; Pin RA0
+                      00035 #define YELLOW_LED          d'1'        ; Pin RA1
+                      00036 #define GREEN_LED           d'2'        ; Pin RA2
+                      00037 #define BLUE_LED            d'5'        ; Pin RA5
                       00038     
-                      00039 #define RED_LED_BIT         04h
-                      00040 #define YELLOW_LED_BIT      08h
-                      00041 #define GREEN_LED_BIT       10h
+                      00039 #define RED_LED_BIT         d'2'        ; Bit Number 2 from Msg
+                      00040 #define YELLOW_LED_BIT      d'3'        ; Bit Number 3 from Msg
+                      00041 #define GREEN_LED_BIT       d'4'        ; Bit Number 4 from Msg
                       00042 
-                      00043 ; bits in RecvStatus Byte
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  2
+                      00043 
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE  2
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-                      00044 #define RecvStarting 0      ;make sure default to decimal is set for these defines
-                      00045 #define RecvDataReady 1     
-                      00046 #define RecvFramingErr 2
-                      00047 #define RecvActive
+                      00044 #define RecvStarting        d'0'        ; bits numbers in RecvStatus Byte    
+                      00045 #define RecvDataReady       d'1'            
+                      00046 #define RecvFramingErr      d'2'
+                      00047 #define RecvActive          d'3'
                       00048     
                       00049 #define ALL_BITS_HI         ffh
                       00050     
@@ -116,7 +116,7 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
 0012   0803           00093                 movf        STATUS,w        ; move status into W to prepare for saving
 0013   0183           00094                 clrf        STATUS          ; clear status bits to change to file register bank 0
 0014   00F1           00095                 movwf       STATUS_TEMP     ; save away Status and
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  3
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE  3
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -172,16 +172,15 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
 0039   018F           00138                 clrf        TMR1L                   ; clearing LO 8 bits        
 003A   1411           00139                 bsf         T1CON, TMR1ON           ; Enable Timer1 with TMR1ON bits of T1CON 
 003B   1283 1703      00140                 banksel     LATA                    ; change to bank with LATA
-Warning[202]: Argument out of range.  Least significant bits used.
-003D   1405           00141                 bsf         LATA, BLUE_LED          ; Raise RA4 to turn on blue LED
+003D   1685           00141                 bsf         LATA, BLUE_LED          ; Raise RA4 to turn on blue LED
 003E   2???           00142                 goto        ClearTMR2Flag           ; jump down to clear flag
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  4
+                      00143                 
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE  4
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-                      00143                 
 003F                  00144 BadStartBit     ;else ( RX is high, so bad start bit)
 003F   1283 1303      00145                 banksel     IOCAF                   ;change to bank with IOC falling edge flags
 0041   1688           00146                 bsf         IOCAN, RA5              ;program IOC Negative on RX and enable interrupt
@@ -234,18 +233,17 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
 0061                  00186 ISR_TIMER1
 0061   1283 1303      00187                 banksel     PIR1                    ; go to register containing the peripheral interrupt
                              flags
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  5
+0063   1C0C           00188                 btfss       PIR1, TMR1IF            ; If Timer1 interrupt is active, skip next instructi
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE  5
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
   VALUE
 
-0063   1C0C           00188                 btfss       PIR1, TMR1IF            ; If Timer1 interrupt is active, skip next instructi
                             on
 0064   2???           00189                 goto        Pop                     ; skip down to POP since Timer1 interrupt is not act
                             ive
-Warning[202]: Argument out of range.  Least significant bits used.
-0065   1005           00190                 bcf         LATA, BLUE_LED          ; Lower RA4 to turn off BLUE LED 
+0065   1285           00190                 bcf         LATA, BLUE_LED          ; Lower RA4 to turn off BLUE LED 
 0066   1011           00191                 bcf         T1CON, TMR1ON           ; Disable Timer1 with TMR1ON bits of T1CON
 0067   100C           00192                 bcf         PIR1, TMR1IF            ; Clear TMR1IF in PIR1
                       00193  
@@ -262,30 +260,26 @@ Warning[202]: Argument out of range.  Least significant bits used.
 006F                  00204 UpdateDataLEDs:
                       00205         
 006F                  00206 UpdateRedLED
-006F   1A75           00207                 btfsc       RecvDataRegister, RED_LED_BIT   ; skip next instruction if RED LED BIT in da
+006F   1975           00207                 btfsc       RecvDataRegister, RED_LED_BIT   ; skip next instruction if RED LED BIT in da
                             ta received is clear
 0070   1405           00208                 bsf         LATA, RED_LED                   ; turn red LED ON
-0071   1E75           00209                 btfss       RecvDataRegister, RED_LED_BIT   ; skip next instruction if RED LED BIT in da
+0071   1D75           00209                 btfss       RecvDataRegister, RED_LED_BIT   ; skip next instruction if RED LED BIT in da
                             ta received is set
 0072   1005           00210                 bcf         LATA, RED_LED                   ; turn red LED OFF
                       00211     
 0073                  00212 UpdateYellowLED
-Warning[202]: Argument out of range.  Least significant bits used.
-0073   1875           00213                 btfsc       RecvDataRegister, YELLOW_LED_BIT    ; skip next instruction if YELLOW LED BI
+0073   19F5           00213                 btfsc       RecvDataRegister, YELLOW_LED_BIT    ; skip next instruction if YELLOW LED BI
                             T in data received is clear
 0074   1485           00214                 bsf         LATA, YELLOW_LED                    ; turn YELLOW LED ON
-Warning[202]: Argument out of range.  Least significant bits used.
-0075   1C75           00215                 btfss       RecvDataRegister, YELLOW_LED_BIT    ; skip next instruction if YELLOW LED BI
+0075   1DF5           00215                 btfss       RecvDataRegister, YELLOW_LED_BIT    ; skip next instruction if YELLOW LED BI
                             T in data received is set
 0076   1085           00216                 bcf         LATA, YELLOW_LED                    ; turn YELLOW LED OFF
                       00217 
 0077                  00218 UpdateGreenLED
-Warning[202]: Argument out of range.  Least significant bits used.
-0077   1875           00219                 btfsc       RecvDataRegister, GREEN_LED_BIT     ; skip next instruction if GREEN LED BIT
+0077   1A75           00219                 btfsc       RecvDataRegister, GREEN_LED_BIT     ; skip next instruction if GREEN LED BIT
                              in data received is clear
 0078   1505           00220                 bsf         LATA, GREEN_LED                     ; turn GREEN LED ON
-Warning[202]: Argument out of range.  Least significant bits used.
-0079   1C75           00221                 btfss       RecvDataRegister, GREEN_LED_BIT     ; skip next instruction if GREEN LED BIT
+0079   1E75           00221                 btfss       RecvDataRegister, GREEN_LED_BIT     ; skip next instruction if GREEN LED BIT
                              in data received is set
 007A   1105           00222                 bcf         LATA, GREEN_LED                     ; turn GREEN LED OFF
                       00223                 
@@ -293,18 +287,18 @@ Warning[202]: Argument out of range.  Least significant bits used.
                       00225             
                       00226 ;******************** Initialialization Routines ******************;
                       00227 
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  6
-
-
-LOC  OBJECT CODE     LINE SOURCE TEXT
-  VALUE
-
 007C                  00228 InitGPIO:   ;Set up Pins initialized to the following:
                       00229             ; RA0 = OUTPUT  (Red LED)
                       00230             ; RA1 = OUTPUT  (Yellow LED)
                       00231             ; RA2 = OUTPUT  (Green LED)
                       00232             ; RA4 = OUTPUT  (Blue LED)
                       00233             ; RA5 = INPUT   (Comm Line)
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE  6
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
                       00234 
 007C   1283 1303      00235             banksel      PORTA           ; Go to bank containing PortA
 007E   0185           00236             clrf         PORTA           ; Init PORTA
@@ -352,7 +346,7 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
 00AC   0008           00278             return
                       00279    
 3FC6                  00280     end                     ; tell the assembler we are done
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  7
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE  7
 
 
 SYMBOL TABLE
@@ -378,19 +372,19 @@ ANSA4                             00000004
 ANSA5                             00000005
 ANSELA                            00000185
 APFCON                            00000188
-BIT_FIVE                          5
-BIT_FIVE_HI                       32
-BIT_FOUR                          4
-BIT_FOUR_HI                       16
-BIT_ONE                           1
-BIT_ONE_HI                        2
-BIT_THREE                         3
-BIT_THREE_HI                      8
-BIT_TWO                           2
-BIT_TWO_HI                        4
-BIT_ZERO                          0
-BIT_ZERO_HI                       1
-BLUE_LED                          10h
+BIT_FIVE                          d'5'
+BIT_FIVE_HI                       b'0010 0000'
+BIT_FOUR                          d'4'
+BIT_FOUR_HI                       b'0001 0000'
+BIT_ONE                           d'1'
+BIT_ONE_HI                        b'0000 0010'
+BIT_THREE                         d'3'
+BIT_THREE_HI                      b'0000 1000'
+BIT_TWO                           d'2'
+BIT_TWO_HI                        b'0000 0100'
+BIT_ZERO                          d'0'
+BIT_ZERO_HI                       b'0000 0001'
+BLUE_LED                          d'5'
 BadStartBit                       0000003F
 C                                 00000000
 C1CON0                            0000009D
@@ -411,7 +405,7 @@ C1SP                              00000002
 C1SYNC                            00000000
 C1ZLF                             00000003
 C2CON0                            0000009B
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  8
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE  8
 
 
 SYMBOL TABLE
@@ -470,7 +464,7 @@ DACEN                             00000007
 DACOE                             00000005
 DACPSS0                           00000002
 DACR0                             00000000
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE  9
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE  9
 
 
 SYMBOL TABLE
@@ -529,7 +523,7 @@ G1OE1                             00000006
 G1PH0                             00000000
 G1PH1                             00000001
 G1PH2                             00000002
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE 10
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE 10
 
 
 SYMBOL TABLE
@@ -544,8 +538,8 @@ G1RS2                             00000002
 G1RSIM                            00000006
 GIE                               00000007
 GO_NOT_DONE                       00000001
-GREEN_LED                         02h
-GREEN_LED_BIT                     10h
+GREEN_LED                         d'2'
+GREEN_LED_BIT                     d'4'
 GoodStartBit                      00000032
 H1CKPS0                           00000000
 H1CKPS1                           00000001
@@ -588,7 +582,7 @@ IOCAN3                            00000003
 IOCAN4                            00000004
 IOCAN5                            00000005
 IOCAP                             00000088
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE 11
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE 11
 
 
 SYMBOL TABLE
@@ -647,7 +641,7 @@ PIR2                              0000000D
 PMADR                             0000018E
 PMADRH                            0000018F
 PMADRL                            0000018E
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE 12
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE 12
 
 
 SYMBOL TABLE
@@ -673,18 +667,18 @@ RA3                               00000003
 RA4                               00000004
 RA5                               00000005
 RD                                00000000
-RED_LED                           00h
-RED_LED_BIT                       04h
+RED_LED                           d'0'
+RED_LED_BIT                       d'2'
 RP0                               00000005
 RP1                               00000006
 RX_FALLING_EDGE                   0000001C
-RecvActive                        
-RecvDataReady                     1
+RecvActive                        d'3'
+RecvDataReady                     d'1'
 RecvDataRegister                  00000075
-RecvFramingErr                    2
+RecvFramingErr                    d'2'
 RecvShiftCounter                  00000073
 RecvShiftRegister                 00000074
-RecvStarting                      0
+RecvStarting                      d'0'
 RecvStatus                        00000076
 Run                               0000000D
 SLRA0                             00000000
@@ -706,7 +700,7 @@ T1GGO                             00000003
 T1GGO_NOT_DONE                    00000003
 T1GPOL                            00000006
 T1GSEL                            00000004
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE 13
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE 13
 
 
 SYMBOL TABLE
@@ -765,7 +759,7 @@ WPUA1                             00000001
 WPUA2                             00000002
 WPUA3                             00000003
 WPUA4                             00000004
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  16:20:03         PAGE 14
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  18:15:18         PAGE 14
 
 
 SYMBOL TABLE
@@ -775,8 +769,8 @@ WPUA5                             00000005
 WR                                00000001
 WREG_TEMP                         00000070
 WREN                              00000002
-YELLOW_LED                        01h
-YELLOW_LED_BIT                    08h
+YELLOW_LED                        d'1'
+YELLOW_LED_BIT                    d'3'
 Z                                 00000002
 _.org_2_0010                      00000010
 _BOREN_DIS                        00003CFF
@@ -807,7 +801,7 @@ _WRT_OFF                          00003FFF
 __12F752                          00000001
 
 Errors   :     0
-Warnings :     6 reported,     0 suppressed
+Warnings :     0 reported,     0 suppressed
 Messages :     0 reported,    23 suppressed
 
 
