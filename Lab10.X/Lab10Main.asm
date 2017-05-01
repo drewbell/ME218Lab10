@@ -34,7 +34,7 @@
 #define	RED_LED		    d'0'	; Pin RA0
 #define YELLOW_LED	    d'1'	; Pin RA1
 #define GREEN_LED	    d'2'        ; Pin RA2
-#define BLUE_LED	    d'5'        ; Pin RA5
+#define BLUE_LED	    d'4'        ; Pin RA5
     
 #define	RED_LED_BIT	    d'2'	; Bit Number 2 from Msg
 #define YELLOW_LED_BIT	    d'3'	; Bit Number 3 from Msg
@@ -47,6 +47,8 @@
 #define RecvActive	    d'3'
     
 #define ALL_BITS_HI	    ffh
+#define	ADDRESS_MASK	    b'0000 0011'
+#define	NODE_B_ADDR	    b'0000 0001'
     
 #define HALF_BIT_TIME	    d'79'
 #define ONE_BIT_TIME	    d'158'
@@ -75,14 +77,16 @@ Main:		;Initializations
 		call	    InitGPIO		    ; initialize GPIO pins   
 		call	    InitRxIOC		    ; initialize RA5 for interrupt on falling edge
 		call	    InitRxLEDTimer	    ; intialize Timer1 for 0.5s LED pulse upon RX
+		call	    InitTimer2
 		clrf	    RecvStatus		    ; clears RecvStarting, RecvDataReady, RecvFramingErr, RecvActive
 		clrf	    RecvShiftCounter	    ; clear RecvShiftCounter
 		banksel     INTCON		    ; switch to bank 0 for INTCON 
 		bsf	    INTCON, GIE		    ; enable interrupts globally
+		bsf	    INTCON, PEIE	    ; enable peripheral interrupts
             
 Run:		Nop                                       
 		Nop
-		goto	    Run
+ 		goto	    Run
 
 HUAD:		goto        $               ; hang here at the end  
     
@@ -104,8 +108,9 @@ ISR_BODY:
 		goto	    ISR_TIMER2	    ;otherwise, skip down to next interrupt
 	    
 RX_FALLING_EDGE
-		banksel	    PR2		    ;change to bank with PR2
-		movlw	    HALF_BIT_TIME	    ;Program Timer2 to fire interrupt ½ bit time 
+		banksel	    PR2			    ; change to bank with PR2
+		movlw	    HALF_BIT_TIME	    ; program Timer2 to fire interrupt ½ bit time 
+		movwf	    PR2			    ; move half bit time into PR2
 		banksel	    T2CON		    ; move to bank containing T2CON
 		bsf	    T2CON, TMR2ON	    ; turn ON the timer2
 		bsf	    RecvStatus, RecvStarting	    ;Set RecvStarting to 1 
@@ -139,12 +144,13 @@ GoodStartBit	movlw	    ONE_BIT_TIME	    ; load up number representing one bit ti
 		bsf	    T1CON, TMR1ON	    ; Enable Timer1 with TMR1ON bits of T1CON 
 		banksel	    LATA		    ; change to bank with LATA
 		bsf	    LATA, BLUE_LED	    ; Raise RA4 to turn on blue LED
+		decf	    RecvShiftCounter	    ; decrement shift counter
 		goto	    ClearTMR2Flag	    ; jump down to clear flag
 		
 BadStartBit	;else ( RX is high, so bad start bit)
-		banksel	    IOCAF		    ;change to bank with IOC falling edge flags
+		banksel	    IOCAN		    ;change to bank with IOC falling edge flags
 		bsf	    IOCAN, RA5		    ;program IOC Negative on RX and enable interrupt
-		goto	    ISR_TIMER1		    ;skip down to if Timer1 ISR
+		goto	    ClearTMR2Flag		    ;skip down to if Timer1 ISR
 
 DataBit		;else (Doing data bit)
 		decfsz	    RecvShiftCounter,f	    ; decrement RecvShiftCounter, store result to file, and skip next instr if 0
@@ -171,7 +177,15 @@ StopBit		;else
 		btfss	    PORTA, RA5		    ; if RA5 is high for stop bit as it should be, skip next instruction
 		bsf	    RecvStatus, RecvFramingErr	    ; RX LOW means bad stop bit, set RecvFramingErr
 		bsf	    RecvStatus, RecvDataReady	    ;set RecvDataReady to 1
-		call	    UpdateDataLEDs	    ; call routine to update LEDs
+		
+		;if the address bits <1:0> of RecvDataRegister are (0,1) , then report switch bits <4:2> on the LEDs
+		btfss	    RecvDataRegister, BIT_ZERO	    ; if bit 0 of RecvDataRegister is set, skip next instruction
+		goto	    DisableT2			    ; Bit0 of address wrong, skip past LED update to DisableT2
+		btfsc	    RecvDataRegister, BIT_ONE	    ; if bit 1 is clear, skip next instruction
+		goto	    DisableT2			    ; Bit1 of address wrong, skip past LED update to DisableT2
+		call	    UpdateDataLEDs		    ; call routine to update LEDs
+
+DisableT2		
 		banksel	    T2CON		    ; move to bank containing T2CON
 		bcf	    T2CON, TMR2ON	    ; disable TMR2 interrupt
 		banksel	    IOCAN		    ; change to bank with IOC falling edge enable register
@@ -263,7 +277,7 @@ InitRxLEDTimer:	    ;init Timer1 for Rx LED pulse
 	    clrf	TMR1H		; clearing HI 8 bits
 	    clrf	TMR1L		; clearing LO 8 bits
 	    banksel	PIE1		; change to data memory bank with PIE1
-	    bsf		PIE1, TMR1IE	;Enable peripheral interrupts by setting TMR1GIE in PIE1
+	    bsf		PIE1, TMR1IE	;Enable the timer peripheral interrupts by setting TMR1GIE in PIE1
 	    return
 	    
 InitTimer2:	    ;Sets up Timer2: TMR2 = 0, PR2 = 75 = half bit time from reset
