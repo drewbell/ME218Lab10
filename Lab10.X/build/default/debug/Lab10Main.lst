@@ -1,4 +1,4 @@
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE  1
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE  1
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -57,7 +57,7 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
                       00041 #define GREEN_LED_BIT       d'4'        ; Bit Number 4 from Msg
                       00042 
                       00043 
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE  2
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE  2
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -116,7 +116,7 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
                       00093 ;******************** Interrupt Service Routine *******************;
                       00094                             
 0013                  00095 ISR: ;start of ISR
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE  3
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE  3
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -175,7 +175,7 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
 0039   1283 1303      00141                 banksel     TMR1H                   ; change to bank 0 with TMR1L and TMR1H
 003B   0190           00142                 clrf        TMR1H                   ; clearing HI 8 bits
 003C   018F           00143                 clrf        TMR1L                   ; clearing LO 8 bits        
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE  4
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE  4
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -234,7 +234,7 @@ Message[305]: Using default destination of 1 (file).
                             e to DisableT2
 005F   2???           00186                 call        UpdateDataLEDs                  ; call routine to update LEDs
                       00187 
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE  5
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE  5
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -293,7 +293,7 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
 007D   1DF5           00229                 btfss       RecvDataRegister, YELLOW_LED_BIT    ; skip next instruction if YELLOW LED BI
                             T in data received is set
 007E   1085           00230                 bcf         LATA, YELLOW_LED                    ; turn YELLOW LED OFF
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE  6
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE  6
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -352,7 +352,7 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
 00A5   1683 1303      00279             banksel     PIE1            ; change to data memory bank with PIE1
 00A7   140C           00280             bsf         PIE1, TMR1IE    ;Enable the timer peripheral interrupts by setting TMR1GIE in PI
                             E1
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE  7
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE  7
 
 
 LOC  OBJECT CODE     LINE SOURCE TEXT
@@ -372,7 +372,7 @@ LOC  OBJECT CODE     LINE SOURCE TEXT
 00B4   0008           00292             return
                       00293    
 3FC6                  00294     end                     ; tell the assembler we are done
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE  8
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE  8
 
 
 SYMBOL TABLE
@@ -431,7 +431,7 @@ C1POL                             00000004
 C1SP                              00000002
 C1SYNC                            00000000
 C1ZLF                             00000003
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE  9
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE  9
 
 
 SYMBOL TABLE
@@ -490,7 +490,7 @@ DACCON1                           00000092
 DACEN                             00000007
 DACOE                             00000005
 DACPSS0                           00000002
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE 10
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE 10
 
 
 SYMBOL TABLE
@@ -549,7 +549,7 @@ G1LD                              00000002
 G1OE0                             00000005
 G1OE1                             00000006
 G1PH0                             00000000
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE 11
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE 11
 
 
 SYMBOL TABLE
@@ -608,7 +608,7 @@ IOCAN1                            00000001
 IOCAN2                            00000002
 IOCAN3                            00000003
 IOCAN4                            00000004
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE 12
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE 12
 
 
 SYMBOL TABLE
@@ -667,7 +667,7 @@ PIE1                              0000008C
 PIE2                              0000008D
 PIR1                              0000000C
 PIR2                              0000000D
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE 13
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE 13
 
 
 SYMBOL TABLE
@@ -726,7 +726,7 @@ T1CKPS1                           00000005
 T1CON                             00000011
 T1GCON                            00000012
 T1GGO                             00000003
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE 14
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE 14
 
 
 SYMBOL TABLE
@@ -785,7 +785,7 @@ W                                 00000000
 WPUA                              0000010C
 WPUA0                             00000000
 WPUA1                             00000001
-MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  19:57:29         PAGE 15
+MPASM 5.68                     LAB10MAIN.ASM   4-30-2017  20:15:01         PAGE 15
 
 
 SYMBOL TABLE
