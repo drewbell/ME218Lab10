@@ -48,10 +48,11 @@
     
 #define ALL_BITS_HI	    ffh
 #define	ADDRESS_MASK	    b'0000 0011'
-#define	NODE_B_ADDR	    b'0000 0001'
+#define	NODE_B_ADDR	    b'0000 0010'
     
 #define HALF_BIT_TIME	    d'79'
 #define ONE_BIT_TIME	    d'158'
+#define	FullShiftCount	    d'8'
     
 ;
 ;		Variable definitions
@@ -114,11 +115,11 @@ RX_FALLING_EDGE
 		banksel	    T2CON		    ; move to bank containing T2CON
 		bsf	    T2CON, TMR2ON	    ; turn ON the timer2
 		bsf	    RecvStatus, RecvStarting	    ;Set RecvStarting to 1 
-		movlw	    07h		    ;Prepare WREG to set RecvShiftCounter to 7	
-		movwf	    RecvShiftCounter    ;write WREG to RecvShiftCounter
+		movlw	    FullShiftCount	    ;Prepare WREG to set RecvShiftCounter to 7	
+		movwf	    RecvShiftCounter	    ;write WREG to RecvShiftCounter
 		banksel	    IOCAF		    ;change to bank with IOC falling edge flags
 		bcf	    IOCAF, IOCAF5	    ;Clear IOCAF bit associated with RX
-		bcf	    IOCAN, RA5	    ;Disable falling IOC on RX
+		bcf	    IOCAN, RA5		    ;Disable falling IOC on RX
 		;Endif IOC on RX
 		;Process other IOC interrupts as needed
 		;Endif (IOCF set)
@@ -178,10 +179,10 @@ StopBit		;else
 		bsf	    RecvStatus, RecvFramingErr	    ; RX LOW means bad stop bit, set RecvFramingErr
 		bsf	    RecvStatus, RecvDataReady	    ;set RecvDataReady to 1
 		
-		;if the address bits <1:0> of RecvDataRegister are (0,1) , then report switch bits <4:2> on the LEDs
-		btfss	    RecvDataRegister, BIT_ZERO	    ; if bit 0 of RecvDataRegister is set, skip next instruction
+		;if the address bits <1:0> of RecvDataRegister are (1,0) , then report switch bits <4:2> on the LEDs
+		btfsc	    RecvDataRegister, BIT_ZERO	    ; if bit 0 of RecvDataRegister is clear, skip next instruction
 		goto	    DisableT2			    ; Bit0 of address wrong, skip past LED update to DisableT2
-		btfsc	    RecvDataRegister, BIT_ONE	    ; if bit 1 is clear, skip next instruction
+		btfss	    RecvDataRegister, BIT_ONE	    ; if bit 1 is set, skip next instruction
 		goto	    DisableT2			    ; Bit1 of address wrong, skip past LED update to DisableT2
 		call	    UpdateDataLEDs		    ; call routine to update LEDs
 
@@ -256,7 +257,7 @@ InitGPIO:   ;Set up Pins initialized to the following:
             movlw        b'00100000'     ; Prep WREG to set RA<5> as input and set RA<4,2:0> as outputs
             movwf        TRISA           ; move WREG into TRISA
             banksel      LATA            ; switch to bank containing LATA
-            movlw        b'00000000'     ; Set all LED pins LOW to start
+            movlw        b'00000111'     ; Set all LED pins LOW to start
             movwf        LATA            ; Write to the latch
             return    
 
@@ -268,12 +269,12 @@ InitRxIOC:	    ;to set up RA5 to detect falling edge IOC at start of message
 	    return 
 
 InitRxLEDTimer:	    ;init Timer1 for Rx LED pulse
-	    ;Set Timer1 prescale to 1:8 by setting T1CKPS bits of T1CON to 1,1
+	    ;Set Timer1 prescale to 1:2 by setting T1CKPS bits of T1CON to 0,1
 	    banksel	T1CON		; change to bank containing T1CON
 	    bsf		T1CON,T1CKPS0	; set T1CKPS0 hi
-	    bsf		T1CON,T1CKPS1	; set T1CKPS1 hi
+	    bcf		T1CON,T1CKPS1	; set T1CKPS1 lo
 	    ;Clear TMR1H and TMR1L to reset timer to zero
-	    banksel TMR1H		; change to bank 0 with TMR1L and TMR1H
+	    banksel	TMR1H		; change to bank 0 with TMR1L and TMR1H
 	    clrf	TMR1H		; clearing HI 8 bits
 	    clrf	TMR1L		; clearing LO 8 bits
 	    banksel	PIE1		; change to data memory bank with PIE1
